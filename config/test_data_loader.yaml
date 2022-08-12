@@ -1,0 +1,8 @@
+DataLoader:
+  batch_size: 16
+  shuffle: False
+  num_workers: 1
+  Dataset:
+    video_dir: "data/DONGJIN/raw_video"           # raw video directory
+    image_dir: "data/DONGJIN/raw/anomaly-images"              # images directory OR directory to save frames extracted from raw video
+    frame_interval: 3                             # should be >= 1
