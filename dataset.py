@@ -8,6 +8,7 @@ import torch
 import numbers
 from collections.abc import Sequence
 import torchvision.transforms as transforms
+import kornia as K
 
 def _setup_size(size, center, error_msg):
     if not isinstance(center, tuple):
@@ -63,7 +64,13 @@ class DongjinTransform():
             # transforms.RandomAffine(degrees=360, scale=(0.1, 1.1)),
             # transforms.RandomHorizontalFlip(),
             # transforms.RandomRotation(degrees=(0,180)),
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            # Sobel Edge Detection
+            # transforms.Lambda(lambda x: (1. - K.filters.sobel(x.unsqueeze(0))).squeeze(0)),
+            # Laplacian Edge Detection
+            transforms.Lambda(lambda x: (1. - K.filters.laplacian(x.unsqueeze(0), kernel_size=5).clamp(0., 1.)).squeeze(0)),
+            # Canny Edge Detection
+            # transforms.Lambda(lambda x: (1. - K.filters.canny(x.unsqueeze(0))[0].clamp(0., 1.)).squeeze(0)),
         ])
         tf_inv = transforms.Compose([
             transforms.ToPILImage()
@@ -104,19 +111,17 @@ class DONGJIN(VisionDataset):
         train: bool = True,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
-        sample: bool = False
+        train_dir: str = 'train',
+        test_dir: str = 'test'
     ) -> None:
         super().__init__(root, transform=transform, target_transform=target_transform)
 
-        self.sample = sample # for debug, fetch 'sample-images' 
         self.train = train # train or test
         
-        if sample:
-            self.image_dir = os.path.join(self.raw_folder, f"{'sample' if self.train else 'sample-test'}-images")
-            self.label_file = os.path.join(self.raw_folder, f"{'sample' if self.train else 'sample-test'}-labels")
-        else:
-            self.image_dir = os.path.join(self.raw_folder, f"{'train' if self.train else 'test'}-images")
-            self.label_file = os.path.join(self.raw_folder, f"{'train' if self.train else 'test'}-labels")
+        self.train_dir = train_dir
+        self.test_dir = test_dir
+        self.image_dir = os.path.join(self.raw_folder, f"{self.train_dir if self.train else self.test_dir}-images")
+        self.label_file = os.path.join(self.raw_folder, f"{self.train_dir if self.train else self.test_dir}-labels")
 
         if self._check_legacy_exist():
             self.img_paths, self.targets = self._load_legacy_data()
@@ -172,10 +177,7 @@ class DONGJIN(VisionDataset):
         return {_class: i for i, _class in enumerate(self.classes)}
 
     def _check_exists(self) -> bool:
-        if self.sample:
-            return os.path.isdir(os.path.join(self.raw_folder, f'{"sample-images" if self.train else "sample-test-images"}'))
-        else:
-            return os.path.isdir(os.path.join(self.raw_folder, f'{"train-images" if self.train else "test-images"}'))
+        return os.path.isdir(os.path.join(self.raw_folder, f'{self.train_dir if self.train else self.test_dir}-images'))
 
 def read_label_file(path: int) -> int:
     # TODO : dummy function

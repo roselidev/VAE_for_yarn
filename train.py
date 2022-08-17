@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
-import data_loader as dl
-import workspaces.projects.datavoucher_clone.dongjin.dongjin.VAE.model as md
+import data_prep as dl
+import model as md
 
 # device used
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
