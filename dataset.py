@@ -53,12 +53,13 @@ class DongjinCrop(torch.nn.Module):
         return f"{self.__class__.__name__}(size={self.size})"
 
 class DongjinTransform():
-    def __init__(self, img_resize):
+    def __init__(self, img_resize, center=(1300,300)):
         self.img_resize = img_resize
+        self.center = center
 
     def get(self,):
         tf = transforms.Compose([
-            DongjinCrop(self.img_resize, (1300, 600)),
+            DongjinCrop(self.img_resize, self.center),
             transforms.Grayscale(),
             # transforms.ColorJitter(brightness=.5, hue=.3, saturation=.3, contrast=.5),
             # transforms.RandomAffine(degrees=360, scale=(0.1, 1.1)),
@@ -68,9 +69,12 @@ class DongjinTransform():
             # Sobel Edge Detection
             # transforms.Lambda(lambda x: (1. - K.filters.sobel(x.unsqueeze(0))).squeeze(0)),
             # Laplacian Edge Detection
-            transforms.Lambda(lambda x: (1. - K.filters.laplacian(x.unsqueeze(0), kernel_size=5).clamp(0., 1.)).squeeze(0)),
+            # transforms.Lambda(lambda x: (1. - K.filters.laplacian(x.unsqueeze(0), kernel_size=5).clamp(0., 1.)).squeeze(0)),
             # Canny Edge Detection
             # transforms.Lambda(lambda x: (1. - K.filters.canny(x.unsqueeze(0))[0].clamp(0., 1.)).squeeze(0)),
+            # Canny Filter
+            transforms.Lambda(lambda x: (K.filters.canny(x.unsqueeze(0))[0].clamp(0., 1.)).squeeze(0)),
+            transforms.Lambda(lambda x: K.morphology.dilation(x.unsqueeze(0), kernel=torch.tensor([[0.,1.,0.],[0.,1.,0.],[0.,1.,0.]])).squeeze(0)) # Dilation
         ])
         tf_inv = transforms.Compose([
             transforms.ToPILImage()
@@ -159,7 +163,8 @@ class DONGJIN(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target
+        meta = {'img_path': img_path, 'frame_num': img_path.split('_')[-1].replace('.jpg', ''), 'idx': index}
+        return img, target, meta
 
     def __len__(self) -> int:
         return len(self.img_paths)
